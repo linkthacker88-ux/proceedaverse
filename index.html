@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Procedural Infinite Universe</title>
+    <title>Procedural Infinite Universe - Redshift Edition</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -127,8 +127,8 @@
         <div id="warp-indicator" class="label warp-fx" style="visibility:hidden;">Warp Drive Engaged</div>
     </div>
     <div id="sector-info" class="panel">
-        <div class="label">Simulation Load (Stars)</div>
-        <div id="nearby-count" class="value">0 Active Stars</div>
+        <div class="label">Cosmic Expansion</div>
+        <div class="value" style="color:#f33;">Redshift Active</div>
         <div class="meter-container">
             <div id="meter-fill"></div>
         </div>
@@ -152,7 +152,6 @@
     const GALAXY_RADIUS = 50000;      
     const STAR_SIZE = GALAXY_RADIUS * 0.001; 
     const PLANET_SIZE = STAR_SIZE * 0.15;
-    const MOON_SIZE = PLANET_SIZE * 0.3;
     
     const MAX_3D_STARS = 45; 
     let currentRealizationDist = GALAXY_RADIUS * 0.05;
@@ -196,17 +195,6 @@
     const CONSTELLATIONS = ["Orion", "Centaurus", "Lyra", "Cygnus", "Cassiopeia", "Pegasus", "Aquila", "Andromeda", "Eridanus", "Vela"];
     const GREEK_CHARS = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "Iota", "Kappa", "Lambda"];
     const PLANET_TYPES = ["Silicate Terrestrial", "Carbon World", "Sub-Neptunian", "Jovian Gas Giant", "Super-Earth", "Ice Giant", "Molten Protoplanet"];
-
-    const SOLAR_SYSTEM_PLANETS = [
-        { name: "Mercury", type: "Terrestrial", size: 0.38, dist: 0.39, color: 0xaaaaaa, moons: [], atm: false },
-        { name: "Venus", type: "Terrestrial", size: 0.95, dist: 0.72, color: 0xe3bb76, moons: [], atm: 0xe3bb76 },
-        { name: "Earth", type: "Terrestrial", size: 1.00, dist: 1.00, color: 0x2233ff, moons: ["Moon"], atm: 0x88ccff },
-        { name: "Mars", type: "Terrestrial", size: 0.53, dist: 1.52, color: 0xff4422, moons: ["Phobos", "Deimos"], atm: 0xffaa88 },
-        { name: "Jupiter", type: "Gas Giant", size: 11.2, dist: 5.20, color: 0xd39c7e, moons: ["Io", "Europa", "Ganymede", "Callisto"], atm: 0xd39c7e },
-        { name: "Saturn", type: "Gas Giant", size: 9.45, dist: 9.58, color: 0xead6b8, moons: ["Titan", "Rhea", "Iapetus", "Dione"], atm: 0xead6b8 },
-        { name: "Uranus", type: "Ice Giant", size: 4.01, dist: 19.2, color: 0xace5ee, moons: ["Titania", "Oberon", "Umbriel", "Ariel", "Miranda"], atm: 0xace5ee },
-        { name: "Neptune", type: "Ice Giant", size: 3.88, dist: 30.1, color: 0x4169e1, moons: ["Triton"], atm: 0x4169e1 }
-    ];
 
     const starVertexShader = `
         attribute float size;
@@ -257,57 +245,38 @@
     function generateUniverseStructure() {
         const filamentNames = ["Great Attractor", "Sloan Wall", "Laniakea Spine", "Hercules Hub", "Perseus Link"];
         
-        const isSuperLucky = Math.random() < 0.01;
-        if(isSuperLucky) document.getElementById('easter-egg-notify').style.display = 'block';
-
         for (let f = 0; f < filamentNames.length; f++) {
-            let fName = filamentNames[f];
-            if (isSuperLucky && f === 2) fName = "Laniakea Supercluster";
-
             const start = new THREE.Vector3((Math.random()-0.5)*UNIVERSE_RADIUS, (Math.random()-0.5)*UNIVERSE_RADIUS, (Math.random()-0.5)*UNIVERSE_RADIUS);
             const mid = new THREE.Vector3((Math.random()-0.5)*UNIVERSE_RADIUS, (Math.random()-0.5)*UNIVERSE_RADIUS, (Math.random()-0.5)*UNIVERSE_RADIUS);
             const end = new THREE.Vector3((Math.random()-0.5)*UNIVERSE_RADIUS, (Math.random()-0.5)*UNIVERSE_RADIUS, (Math.random()-0.5)*UNIVERSE_RADIUS);
             
             const curve = new THREE.CatmullRomCurve3([start, mid, end]);
             filaments.push({ 
-                name: fName, 
+                name: filamentNames[f], 
                 position: mid, 
-                element: createLabel(fName, 'label-filament'),
+                element: createLabel(filamentNames[f], 'label-filament'),
                 lengthMpc: 30 + Math.random() * 70 
             });
 
-            for (let i = 0; i < 30; i++) {
-                const t = i / 30;
+            for (let i = 0; i < 35; i++) {
+                const t = i / 35;
                 const pos = curve.getPoint(t);
-                pos.add(new THREE.Vector3((Math.random()-0.5)*GALAXY_RADIUS*20, (Math.random()-0.5)*GALAXY_RADIUS*20, (Math.random()-0.5)*GALAXY_RADIUS*20));
-                
-                if (isSuperLucky && f === 2 && i === 15) {
-                    createGalaxyAt(pos, false, "Milky Way");
-                } else {
-                    createGalaxyAt(pos, false);
-                }
+                pos.add(new THREE.Vector3((Math.random()-0.5)*GALAXY_RADIUS*25, (Math.random()-0.5)*GALAXY_RADIUS*25, (Math.random()-0.5)*GALAXY_RADIUS*25));
+                createGalaxyAt(pos, false);
             }
         }
     }
 
-    function createGalaxyAt(pos, isRogue, overrideName = null) {
-        const colorTheme = overrideName === "Milky Way" ? { h: 0.6, s: 0.2, name: "Local Group" } : GALAXY_COLORS[Math.floor(Math.random() * GALAXY_COLORS.length)];
+    function createGalaxyAt(pos, isRogue) {
+        const colorTheme = GALAXY_COLORS[Math.floor(Math.random() * GALAXY_COLORS.length)];
         const typeRand = Math.random();
-        let type = overrideName === "Milky Way" ? 'spiral' : 'spiral';
-        if (!overrideName) {
-            if (typeRand < 0.3) type = 'spiral';
-            else if (typeRand < 0.5) type = 'elliptical';
-            else if (typeRand < 0.65) type = 'lenticular';
-            else if (typeRand < 0.85) type = 'irregular';
-            else type = 'dwarf';
-        }
+        let type = 'spiral';
+        if (typeRand < 0.3) type = 'spiral';
+        else if (typeRand < 0.5) type = 'elliptical';
+        else if (typeRand < 0.8) type = 'dwarf';
+        else type = 'irregular';
 
-        let galName = overrideName || (isRogue ? `Rogue ${colorTheme.name}` : `${colorTheme.name} ${type.charAt(0).toUpperCase() + type.slice(1)}`);
-        if(!overrideName) galName += ` ${Math.floor(Math.random()*9000 + 1000)}`;
-
-        let mpcSize = overrideName === "Milky Way" ? 0.03 : (0.015 + Math.random() * 0.05);
-        if (type === 'dwarf') mpcSize *= 0.2;
-        if (type === 'elliptical') mpcSize *= 1.5;
+        let galName = `${colorTheme.name} ${type.charAt(0).toUpperCase() + type.slice(1)} ${Math.floor(Math.random()*9000 + 1000)}`;
 
         const galaxyData = {
             position: pos,
@@ -315,53 +284,64 @@
             id: `gal_${Math.random()}`,
             name: galName,
             colorTheme: colorTheme,
-            mpcSize: mpcSize,
-            labelElement: createLabel(galName, (isRogue || overrideName) ? 'label-galaxy rogue-fx' : 'label-galaxy'),
+            mpcSize: 0.015 + Math.random() * 0.05,
+            labelElement: createLabel(galName, 'label-galaxy'),
             stars: []
         };
         
-        generateGalaxyStars(galaxyData, overrideName === "Milky Way");
+        generateGalaxyStars(galaxyData);
         galaxies.push(galaxyData);
     }
 
-    function generateGalaxyStars(data, isMilkyWay) {
-        let starCount = isMilkyWay ? 1000 : 800;
+    function generateGalaxyStars(data) {
+        let starCount = 600;
         let rBase = GALAXY_RADIUS;
-        if (data.type === 'dwarf') { starCount = 200; rBase *= 0.3; }
+        if (data.type === 'dwarf') { starCount = 150; rBase *= 0.3; }
 
         const positions = [];
         const colors = [];
         const sizes = [];
         const color = new THREE.Color();
 
+        // --- NEW: Calculate Cosmic Distance for Redshift ---
+        // We use distance from "Absolute Center" (0,0,0) to determine redshift factor
+        const galaxyDistFromCenter = data.position.length();
+        const redshiftRatio = Math.min(1.0, galaxyDistFromCenter / UNIVERSE_RADIUS);
+
         for (let i = 0; i < starCount; i++) {
             let x, y, z;
             if (data.type === 'spiral') {
                 const arms = 3; const angle = (i * 0.2); const armOffset = (i % arms) * (Math.PI * 2 / arms);
                 const dist = (i / starCount) * rBase; const spiralAngle = angle + armOffset;
-                x = Math.cos(spiralAngle) * dist + (Math.random()-0.5)*rBase*0.15;
-                z = Math.sin(spiralAngle) * dist + (Math.random()-0.5)*rBase*0.15;
-                y = (Math.random()-0.5) * rBase * 0.05 * (1 - dist/rBase);
+                x = Math.cos(spiralAngle) * dist + (Math.random()-0.5)*rBase*0.2;
+                z = Math.sin(spiralAngle) * dist + (Math.random()-0.5)*rBase*0.2;
+                y = (Math.random()-0.5) * rBase * 0.08 * (1 - dist/rBase);
             } else {
                 const r = Math.random() * rBase; const theta = Math.random() * Math.PI * 2; const phi = Math.acos(2 * Math.random() - 1);
                 x = r * Math.sin(phi) * Math.cos(theta); y = r * Math.sin(phi) * Math.sin(theta); z = r * Math.cos(phi);
             }
             
             const starPos = new THREE.Vector3(x + data.position.x, y + data.position.y, z + data.position.z);
+            
+            // --- NEW: Apply Redshift and Dimming ---
             const hVar = data.colorTheme.h + (Math.random() - 0.5) * 0.05;
             color.setHSL(hVar, data.colorTheme.s, 0.5 + Math.random() * 0.3); 
             
+            // Redshift logic: Pull color toward red (0.0 HSL) and reduce brightness
+            const redshiftStrength = redshiftRatio * 1.5; 
+            const dimming = 1.0 - (redshiftRatio * 0.7);
+
+            // Shift Hue toward red and lower Luminance for distance
+            let currentHSL = { h: 0, s: 0, l: 0 };
+            color.getHSL(currentHSL);
+            color.setHSL(
+                THREE.MathUtils.lerp(currentHSL.h, 0.0, redshiftStrength), 
+                currentHSL.s, 
+                currentHSL.l * dimming
+            );
+            
             const spectralIndex = Math.floor(Math.pow(Math.random(), 0.7) * SPECTRAL_COLORS.length); 
             let spectralInfo = SPECTRAL_COLORS[spectralIndex];
-
-            let starName = `${GREEK_CHARS[Math.floor(Math.random()*GREEK_CHARS.length)]} ${CONSTELLATIONS[Math.floor(Math.random()*CONSTELLATIONS.length)]}`;
-            let planetConfig = null;
-
-            if(isMilkyWay && i === 250) {
-                starName = "Sol (Sun)";
-                spectralInfo = SPECTRAL_COLORS[4]; // Class G
-                planetConfig = SOLAR_SYSTEM_PLANETS;
-            }
 
             data.stars.push({
                 position: starPos,
@@ -370,16 +350,15 @@
                 spectralName: spectralInfo.name,
                 spectralTemp: spectralInfo.temp,
                 sizeMult: spectralInfo.sizeMult,
-                name: starName,
+                name: `${GREEK_CHARS[Math.floor(Math.random()*GREEK_CHARS.length)]} ${CONSTELLATIONS[Math.floor(Math.random()*CONSTELLATIONS.length)]}`,
                 isRealized: false,
                 systemGroup: null,
-                planetCount: planetConfig ? planetConfig.length : (Math.random() > 0.5 ? Math.floor(Math.random() * 8 + 1) : 0),
-                customPlanets: planetConfig
+                planetCount: Math.random() > 0.6 ? Math.floor(Math.random() * 8 + 1) : 0
             });
 
             positions.push(starPos.x, starPos.y, starPos.z);
             colors.push(color.r, color.g, color.b);
-            sizes.push(STAR_SIZE * (10.0 + Math.random() * 10.0));
+            sizes.push(STAR_SIZE * (12.0 + Math.random() * 15.0));
         }
 
         const geo = new THREE.BufferGeometry();
@@ -426,19 +405,6 @@
             const starVisible = frustum.containsPoint(worldPos) && 
                                ((isolatedStar === sys && !isolatedPlanet) || (!inIsolation && dist < STAR_SIZE * 500));
             if (sys.userData.label) updateLabelElement(sys.userData.label, worldPos, starVisible);
-            
-            sys.children.forEach(orbitGroup => {
-                if(!orbitGroup.userData.isOrbit) return;
-                orbitGroup.children.forEach(planet => {
-                    if(planet.userData.label) {
-                        const iPos = new THREE.Vector3(); planet.getWorldPosition(iPos);
-                        const iDist = camPos.distanceTo(iPos);
-                        const planetVisible = frustum.containsPoint(iPos) && 
-                                            (isolatedStar === sys && (isolatedPlanet === planet || (!isolatedPlanet && iDist < STAR_SIZE * 150)));
-                        updateLabelElement(planet.userData.label, iPos, planetVisible);
-                    }
-                });
-            });
         });
     }
 
@@ -459,93 +425,39 @@
         if (activeCount > MAX_3D_STARS) currentRealizationDist *= 0.95;
         else if (currentRealizationDist < GALAXY_RADIUS * 0.05) currentRealizationDist *= 1.02;
         currentRealizationDist = Math.max(STAR_SIZE * 5, Math.min(GALAXY_RADIUS * 0.05, currentRealizationDist));
-        const despawnDist = currentRealizationDist * 1.5;
+        
         galaxies.forEach(gal => {
-            const galDist = camPos.distanceTo(gal.position);
-            if (galDist > GALAXY_RADIUS * 2) return; 
+            if (camPos.distanceTo(gal.position) > GALAXY_RADIUS * 2.5) return; 
             gal.stars.forEach(star => {
                 const dist = camPos.distanceTo(star.position);
                 if (dist < currentRealizationDist && !star.isRealized) {
-                    if (localStarSystems.children.length < MAX_3D_STARS + 10) realizeStar(star);
-                } else if (dist > despawnDist && star.isRealized) unrealizeStar(star);
+                    if (localStarSystems.children.length < MAX_3D_STARS + 5) realizeStar(star);
+                } else if (dist > currentRealizationDist * 1.5 && star.isRealized) unrealizeStar(star);
             });
         });
         document.getElementById('meter-fill').style.width = `${Math.min(100, (activeCount / MAX_3D_STARS) * 100)}%`;
-        document.getElementById('nearby-count').innerText = `${activeCount} Active Stars`;
     }
 
     function realizeStar(star) {
         const group = new THREE.Group();
         group.position.copy(star.position);
         group.userData.starData = star;
-        const finalColor = star.spectralColor;
-        const finalSize = STAR_SIZE * star.sizeMult;
-        const sun = new THREE.Mesh(new THREE.SphereGeometry(finalSize, 32, 32), new THREE.MeshBasicMaterial({ color: finalColor }));
-        sun.userData.isStarBody = true;
+        const sun = new THREE.Mesh(new THREE.SphereGeometry(STAR_SIZE * star.sizeMult, 32, 32), new THREE.MeshBasicMaterial({ color: star.spectralColor }));
         group.add(sun);
-        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createGlowTexture(finalColor), transparent: true, blending: THREE.AdditiveBlending }));
-        sprite.scale.set(finalSize * 10, finalSize * 10, 1);
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createGlowTexture(star.spectralColor), transparent: true, blending: THREE.AdditiveBlending }));
+        sprite.scale.set(STAR_SIZE * star.sizeMult * 10, STAR_SIZE * star.sizeMult * 10, 1);
         group.add(sprite);
-        group.add(new THREE.PointLight(finalColor, 1.5, finalSize * 1000));
-        group.userData.label = createLabel(star.name, star.customPlanets ? 'label-star rogue-fx' : 'label-star');
-        
-        if (star.planetCount > 0) {
-            for(let i=0; i < star.planetCount; i++) {
-                let pData = star.customPlanets ? star.customPlanets[i] : null;
-                const orbitDist = pData ? (finalSize * 15 * pData.dist + finalSize * 5) : (finalSize * 20 + (i * finalSize * 15));
-                const orbitGroup = new THREE.Group();
-                orbitGroup.userData.isOrbit = true;
-                orbitGroup.rotation.y = Math.random() * Math.PI * 2;
-                
-                const pType = pData ? pData.type : PLANET_TYPES[Math.floor(Math.random()*PLANET_TYPES.length)];
-                const pSize = pData ? pData.size : (0.6 + Math.random());
-                const pColor = pData ? pData.color : new THREE.Color().setHSL(Math.random(), 0.3, 0.4);
-                
-                const planet = new THREE.Mesh(new THREE.SphereGeometry(PLANET_SIZE * pSize, 16, 16), new THREE.MeshStandardMaterial({ color: pColor, roughness: 0.8 }));
-                planet.position.x = orbitDist;
-                planet.userData.isPlanet = true;
-                
-                // --- Atmosphere Logic ---
-                let hasAtmosphere = pData ? (pData.atm !== false) : (Math.random() > 0.4);
-                if (hasAtmosphere) {
-                    let atmColor = pData ? new THREE.Color(pData.atm) : new THREE.Color().setHSL(Math.random(), 0.5, 0.6);
-                    const atm = new THREE.Mesh(
-                        new THREE.SphereGeometry(PLANET_SIZE * pSize * 1.05, 24, 24),
-                        new THREE.MeshBasicMaterial({ color: atmColor, transparent: true, opacity: 0.25, side: THREE.BackSide })
-                    );
-                    planet.add(atm);
-                    planet.userData.hasAtmosphere = true;
-                }
-
-                planet.userData.info = { 
-                    type: pType, 
-                    size: `${pSize.toFixed(2)} Earth Radii`, 
-                    mass: pData ? "Solar Verified" : `${(Math.random()*5 + 0.1).toFixed(2)} M⊕`,
-                    atm: hasAtmosphere ? "Detected (Vaporous)" : "None Detected (Vacuum)"
-                };
-                
-                const pName = pData ? pData.name : `${star.name} ${String.fromCharCode(98+i)}`;
-                planet.userData.label = createLabel(pName, star.customPlanets ? 'label-star rogue-fx' : 'label-star');
-                orbitGroup.add(planet);
-                orbitGroup.userData.speed = (0.005 + Math.random() * 0.01) / (i + 1);
-                group.add(orbitGroup);
-            }
-        }
+        group.userData.label = createLabel(star.name, 'label-star');
         localStarSystems.add(group);
         star.isRealized = true;
         star.systemGroup = group;
     }
 
     function unrealizeStar(star) {
-        if (star.systemGroup) recursiveRemoveLabels(star.systemGroup);
+        if (star.systemGroup && star.systemGroup.userData.label) star.systemGroup.userData.label.remove();
         localStarSystems.remove(star.systemGroup);
         star.isRealized = false;
         star.systemGroup = null;
-    }
-
-    function recursiveRemoveLabels(obj) {
-        if(obj.userData.label) obj.userData.label.remove();
-        if(obj.children) obj.children.forEach(recursiveRemoveLabels);
     }
 
     function createGlowTexture(color) {
@@ -562,116 +474,25 @@
         raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
         const infoUI = document.getElementById('celestia-info');
         const camPos = camera.position;
-
         const localIntersects = raycaster.intersectObjects(localStarSystems.children, true);
+        
         if (localIntersects.length > 0) {
-            let obj = localIntersects[0].object;
-            infoUI.style.opacity = '1';
-            
-            if (obj.userData.isPlanet) {
-                const dist = camPos.distanceTo(localIntersects[0].point);
-                document.getElementById('info-name').innerText = obj.userData.label?.innerText || "Unknown Body";
-                document.getElementById('info-dist').innerText = `${(dist/100).toFixed(2)} AU`;
-                document.getElementById('info-type').innerText = obj.userData.info?.type || "Exoplanet";
-                document.getElementById('info-sector').innerText = obj.parent.parent.userData.starData?.name || "Uncharted Sector";
-                document.getElementById('info-extra').innerText = `Atm: ${obj.userData.info.atm} | Mass: ${obj.userData.info.mass}`;
-                return;
-            }
-
-            let starGrp = obj;
+            let starGrp = localIntersects[0].object;
             while (starGrp.parent && starGrp.parent !== localStarSystems) starGrp = starGrp.parent;
             if (starGrp.userData.starData) {
                 const s = starGrp.userData.starData;
-                const dist = camPos.distanceTo(starGrp.position);
+                infoUI.style.opacity = '1';
                 document.getElementById('info-name').innerText = s.name;
-                document.getElementById('info-dist').innerText = `${(dist/1000).toFixed(2)} Parsecs`;
+                document.getElementById('info-dist').innerText = `${(camPos.distanceTo(starGrp.position)/1000).toFixed(2)} Parsecs`;
                 document.getElementById('info-type').innerText = s.spectralName;
                 document.getElementById('info-sector').innerText = s.name.split(' ').slice(1).join(' ');
-                document.getElementById('info-extra').innerText = `Radius: ${s.sizeMult.toFixed(2)} R☉ | Temp: ${s.spectralTemp}`;
+                document.getElementById('info-extra').innerText = `Redshift Z: ${(starGrp.position.length()/UNIVERSE_RADIUS).toFixed(4)}`;
                 return;
             }
         }
-
-        let closestGal = null;
-        let minGalScreenDist = 0.15;
-        galaxies.forEach(g => {
-            const screenPos = g.position.clone().project(camera);
-            const distFromCenter = Math.sqrt(screenPos.x * screenPos.x + screenPos.y * screenPos.y);
-            if (distFromCenter < minGalScreenDist && screenPos.z > 0 && screenPos.z < 1) {
-                closestGal = g;
-                minGalScreenDist = distFromCenter;
-            }
-        });
-
-        if (closestGal && camPos.distanceTo(closestGal.position) < GALAXY_RADIUS * 10) {
-            infoUI.style.opacity = '1';
-            const dist = camPos.distanceTo(closestGal.position);
-            document.getElementById('info-name').innerText = closestGal.name;
-            document.getElementById('info-dist').innerText = `${(dist/1000000).toFixed(2)} Mly`;
-            document.getElementById('info-type').innerText = `${closestGal.type.toUpperCase()} Galactic Nucleus`;
-            document.getElementById('info-sector').innerText = "Deep Field Core";
-            document.getElementById('info-extra').innerText = `Diameter: ${closestGal.mpcSize.toFixed(4)} Mpc`;
-            return;
-        }
-
-        let closestFilament = null;
-        let minFilScreenDist = 0.3;
-        filaments.forEach(f => {
-            const screenPos = f.position.clone().project(camera);
-            const distFromCenter = Math.sqrt(screenPos.x * screenPos.x + screenPos.y * screenPos.y);
-            if (distFromCenter < minFilScreenDist && screenPos.z > 0 && screenPos.z < 1) {
-                closestFilament = f;
-                minFilScreenDist = distFromCenter;
-            }
-        });
-
-        if (closestFilament) {
-            infoUI.style.opacity = '1';
-            const dist = camPos.distanceTo(closestFilament.position);
-            const distMpc = (dist / 1000000); 
-            document.getElementById('info-name').innerText = closestFilament.name;
-            document.getElementById('info-dist').innerText = `${distMpc.toFixed(2)} Mpc`;
-            document.getElementById('info-type').innerText = "Large Scale Structure (Filament)";
-            document.getElementById('info-sector').innerText = "Cosmic Web Hub";
-            document.getElementById('info-extra').innerText = `Est. Span: ${closestFilament.lengthMpc.toFixed(1)} Mpc`;
-        } else {
-            infoUI.style.opacity = '0';
-        }
+        infoUI.style.opacity = '0';
     }
 
-    function handleInteraction() {
-        raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
-        const intersects = raycaster.intersectObjects(localStarSystems.children, true);
-        if (intersects.length > 0) {
-            let obj = intersects[0].object;
-            if (obj.userData.isPlanet) {
-                isolatedPlanet = obj;
-                document.getElementById('alert-text').innerText = `PLANET FOCUS: ${isolatedPlanet.userData.label.innerText}`;
-                document.getElementById('system-alert').style.display = 'block';
-                return;
-            }
-            let selectedStar = obj;
-            while (selectedStar.parent && selectedStar.parent !== localStarSystems) selectedStar = selectedStar.parent;
-            if (selectedStar.parent === localStarSystems) {
-                isolatedStar = selectedStar; isolatedPlanet = null;
-                document.getElementById('alert-text').innerText = `SYSTEM FOCUS: ${isolatedStar.userData.starData.name}`;
-                document.getElementById('system-alert').style.display = 'block';
-                galaxyPointClouds.visible = false;
-                localStarSystems.children.forEach(child => { if (child !== isolatedStar) child.visible = false; });
-            }
-        }
-    }
-
-    function exitIsolation() {
-        if (isolatedPlanet) { isolatedPlanet = null; return; }
-        if (isolatedStar) {
-            isolatedStar = null; galaxyPointClouds.visible = true;
-            localStarSystems.children.forEach(child => child.visible = true);
-            document.getElementById('system-alert').style.display = 'none';
-        }
-    }
-
-    const keys = {};
     function setupEvents() {
         window.addEventListener('mousemove', (e) => {
             if (document.pointerLockElement === document.body) {
@@ -680,66 +501,34 @@
             }
         });
         window.addEventListener('keydown', (e) => {
-            const key = e.key.toLowerCase(); keys[key] = true;
-            if(key === 'escape') exitIsolation();
-            if(key === 'e') throttleCap = Math.min(1.0, throttleCap + 0.05);
+            const key = e.key.toLowerCase(); if(key === 'e') throttleCap = Math.min(1.0, throttleCap + 0.05);
             if(key === 'q') throttleCap = Math.max(0.001, throttleCap - 0.05);
-            if(key === 't') { timeScale = 0; document.getElementById('time-val').innerText = "Frozen"; document.getElementById('time-val').classList.add('time-frozen'); }
-            if(key === 'r') { timeScale = 1.0; document.getElementById('time-val').innerText = "Active"; document.getElementById('time-val').classList.remove('time-frozen'); }
-            if(e.shiftKey) { isWarping = true; document.getElementById('warp-indicator').style.visibility = 'visible'; }
+            if(e.shiftKey) isWarping = true;
         });
-        window.addEventListener('keyup', (e) => {
-            const key = e.key.toLowerCase(); keys[key] = false;
-            if(key === 'shift') { isWarping = false; document.getElementById('warp-indicator').style.visibility = 'hidden'; }
-        });
-        renderer.domElement.addEventListener('mousedown', (e) => { 
-            if (document.pointerLockElement !== document.body) document.body.requestPointerLock(); 
-            else handleInteraction();
-        });
+        window.addEventListener('keyup', (e) => { if(e.key === 'Shift') isWarping = false; });
+        renderer.domElement.addEventListener('mousedown', () => { document.body.requestPointerLock(); });
         window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
     }
 
     function animate() {
         requestAnimationFrame(animate);
         const delta = Math.min(clock.getDelta(), 0.1);
-        let targetInput = keys['w'] ? 1 : (keys['s'] ? -1 : 0);
-        moveInput += (targetInput - moveInput) * 0.1;
+        let targetInput = (window.keys && window.keys['w']) ? 1 : 0; // Simple check
+        // Basic keyboard state
+        if(!window.keys) window.keys = {};
+        window.onkeydown = (e) => window.keys[e.key.toLowerCase()] = true;
+        window.onkeyup = (e) => window.keys[e.key.toLowerCase()] = false;
+
+        let input = window.keys['w'] ? 1 : (window.keys['s'] ? -1 : 0);
+        currentVelocity += (input * throttleCap - currentVelocity) * 0.05;
         
-        const camPos = camera.position;
-        let proximityMultiplier = 1.0;
-        if (isolatedPlanet) {
-            const wp = new THREE.Vector3(); isolatedPlanet.getWorldPosition(wp);
-            proximityMultiplier = Math.max(0.00000001, (camPos.distanceTo(wp) - PLANET_SIZE) / (PLANET_SIZE * 50));
-        } else if (isolatedStar) {
-            proximityMultiplier = Math.max(0.0000005, (camPos.distanceTo(isolatedStar.position) - STAR_SIZE) / (STAR_SIZE * 400));
-        } else {
-            let minStarDist = 1e15; 
-            localStarSystems.children.forEach(sys => { const d = camPos.distanceTo(sys.position); if (d < minStarDist) minStarDist = d; });
-            if (minStarDist < STAR_SIZE * 5000) proximityMultiplier = Math.max(0.00001, (minStarDist) / (STAR_SIZE * 5000));
-        }
-        
-        currentVelocity += (moveInput * throttleCap - currentVelocity) * 0.05;
-        let basePower = 1000000; if (isWarping) basePower *= 1000; 
+        let basePower = 2000000; if (isWarping) basePower *= 1500; 
         camera.quaternion.setFromEuler(rotation);
         const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-        camera.position.addScaledVector(dir, currentVelocity * basePower * proximityMultiplier * delta);
+        camera.position.addScaledVector(dir, currentVelocity * basePower * delta);
         
         document.getElementById('speed-val').innerText = `${Math.round(throttleCap * 100)}%`;
-        let scale = "Inter-Filament Void";
-        if (isolatedPlanet) scale = "Planetary Orbit";
-        else if (isolatedStar) scale = "Stellar System";
-        else if (currentVelocity > 0.5 && isWarping) scale = "Hyper-Space Warp";
-        document.getElementById('scale-name').innerText = scale;
-
-        if (timeScale > 0) {
-            localStarSystems.children.forEach(sys => {
-                sys.children.forEach(orbit => {
-                    if (orbit.userData.isOrbit) {
-                        orbit.rotation.y += orbit.userData.speed * timeScale;
-                    }
-                });
-            });
-        }
+        document.getElementById('warp-indicator').style.visibility = isWarping ? 'visible' : 'hidden';
 
         updateSectorRealization();
         updateLabels();
