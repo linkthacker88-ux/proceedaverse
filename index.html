@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Procedural Infinite Universe - Redshift Edition</title>
+    <title>Procedural Infinite Universe - Planetary Update</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -83,18 +83,13 @@
             transition: opacity 0.3s;
         }
         .label-filament { font-size: 1.2rem; color: rgba(200, 200, 255, 0.8); letter-spacing: 4px; }
+        .label-minor { font-size: 0.7rem; color: rgba(100, 100, 150, 0.6); letter-spacing: 2px; font-weight: 400; }
         .label-galaxy { font-size: 0.8rem; color: rgba(0, 255, 255, 0.7); letter-spacing: 2px; }
         .label-star { font-size: 0.7rem; color: rgba(255, 255, 255, 0.9); }
-        .label-moon { font-size: 0.5rem; color: rgba(180, 180, 180, 0.8); }
-
-        #system-alert { 
-            position: absolute; top: 100px; right: 20px; 
-            background: rgba(0, 200, 255, 0.2); border: 1px solid #0cf; 
-            padding: 10px; border-radius: 4px; display: none;
-        }
+        .label-planet { font-size: 0.55rem; color: rgba(200, 255, 200, 0.9); letter-spacing: 1px; }
+        .label-void { font-size: 0.8rem; color: #f0f; letter-spacing: 2px; }
 
         .time-frozen { color: #ff3333 !important; text-shadow: 0 0 5px #ff3333; }
-        #easter-egg-notify { position: absolute; bottom: 80px; right: 20px; color: #ff0; font-size: 0.7rem; display: none; text-transform: uppercase; letter-spacing: 1px; }
     </style>
 </head>
 <body>
@@ -104,7 +99,7 @@
     <div class="info-stat"><span>Distance</span> <id id="info-dist">---</id></div>
     <div class="info-stat"><span>Classification</span> <id id="info-type">---</id></div>
     <div class="info-stat"><span>Coordinates</span> <id id="info-sector">---</id></div>
-    <div id="info-extra-row" class="info-stat"><span>Analysis</span> <id id="info-extra">---</id></div>
+    <div id="info-extra-row" class="info-stat"><span>Observation</span> <id id="info-extra">---</id></div>
 </div>
 
 <div id="branding">
@@ -127,45 +122,34 @@
         <div id="warp-indicator" class="label warp-fx" style="visibility:hidden;">Warp Drive Engaged</div>
     </div>
     <div id="sector-info" class="panel">
-        <div class="label">Cosmic Expansion</div>
-        <div class="value" style="color:#f33;">Redshift Active</div>
+        <div class="label">Local Realization</div>
         <div class="meter-container">
             <div id="meter-fill"></div>
         </div>
     </div>
 </div>
 
-<div id="system-alert" class="value">
-    <span id="alert-text">SYSTEM ISOLATED</span><br>
-    <span class="label" style="color:white">Press ESC to return</span>
-</div>
-
-<div id="easter-egg-notify">Luck of the Draw: Home System Detected</div>
 <div id="labels-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden;"></div>
 
 <div id="crosshair"></div>
-<div class="instructions">Q/E: Throttle | W/S: Move | T: Stop Time | R: Resume | Click to Focus | ESC: Exit</div>
+<div class="instructions">Q/E: Throttle | W/S: Move | Shift: Warp | Click to Focus | ESC: Exit</div>
 
 <script>
     // --- Scale Constants ---
     const UNIVERSE_RADIUS = 50000000; 
     const GALAXY_RADIUS = 50000;      
     const STAR_SIZE = GALAXY_RADIUS * 0.001; 
-    const PLANET_SIZE = STAR_SIZE * 0.15;
-    
+    const PLANET_BASE_SIZE = STAR_SIZE * 0.2;
+    const BH_SIZE = STAR_SIZE * 20; 
+
     const MAX_3D_STARS = 45; 
     let currentRealizationDist = GALAXY_RADIUS * 0.05;
 
-    let scene, camera, renderer, clock, raycaster, mouse;
+    let scene, camera, renderer, clock, raycaster;
     let currentVelocity = 0; 
     let throttleCap = 0.5; 
-    let moveInput = 0;     
     let rotation = new THREE.Euler(0, 0, 0, 'YXZ');
     let isWarping = false;
-    let timeScale = 1.0; 
-    
-    let isolatedStar = null; 
-    let isolatedPlanet = null; 
     
     let galaxies = []; 
     let filaments = [];
@@ -183,18 +167,71 @@
     ];
 
     const SPECTRAL_COLORS = [
-        { color: 0x9bb2ff, name: "Class O (Blue)", sizeMult: 2.2, temp: "30,000K+" },
-        { color: 0xbbccff, name: "Class B (Blue-White)", sizeMult: 1.8, temp: "10k-30k K" },
-        { color: 0xfbf8ff, name: "Class A (White)", sizeMult: 1.4, temp: "7.5k-10k K" },
-        { color: 0xfff4ea, name: "Class F (Yellow-White)", sizeMult: 1.2, temp: "6k-7.5k K" },
-        { color: 0xfff2a1, name: "Class G (Yellow)", sizeMult: 1.0, temp: "5k-6k K" },
-        { color: 0xffd2a1, name: "Class K (Orange)", sizeMult: 0.8, temp: "3.5k-5k K" },
-        { color: 0xffa4a1, name: "Class M (Red)", sizeMult: 0.6, temp: "2k-3.5k K" }
+        { color: 0x9bb2ff, name: "Class O (Blue)", sizeMult: 2.2 },
+        { color: 0xbbccff, name: "Class B (Blue-White)", sizeMult: 1.8 },
+        { color: 0xfbf8ff, name: "Class A (White)", sizeMult: 1.4 },
+        { color: 0xfff4ea, name: "Class F (Yellow-White)", sizeMult: 1.2 },
+        { color: 0xfff2a1, name: "Class G (Yellow)", sizeMult: 1.0 },
+        { color: 0xffd2a1, name: "Class K (Orange)", sizeMult: 0.8 },
+        { color: 0xffa4a1, name: "Class M (Red)", sizeMult: 0.6 }
     ];
 
-    const CONSTELLATIONS = ["Orion", "Centaurus", "Lyra", "Cygnus", "Cassiopeia", "Pegasus", "Aquila", "Andromeda", "Eridanus", "Vela"];
-    const GREEK_CHARS = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "Iota", "Kappa", "Lambda"];
-    const PLANET_TYPES = ["Silicate Terrestrial", "Carbon World", "Sub-Neptunian", "Jovian Gas Giant", "Super-Earth", "Ice Giant", "Molten Protoplanet"];
+    const CONSTELLATIONS = ["Orion", "Centaurus", "Lyra", "Cygnus", "Cassiopeia", "Pegasus", "Aquila", "Andromeda"];
+    const GREEK_CHARS = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta"];
+
+    // --- Texture Generation Helpers ---
+    function createProceduralTexture(type) {
+        const size = 256;
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        
+        const imgData = ctx.createImageData(size, size);
+        for (let i = 0; i < imgData.data.length; i += 4) {
+            const x = (i / 4) % size;
+            const y = Math.floor((i / 4) / size);
+            
+            let r, g, b;
+            const noise = Math.random();
+
+            if (type === 'jovian') {
+                const stripe = Math.sin(y * 0.1) * 0.5 + 0.5;
+                r = 150 + stripe * 50 + noise * 20;
+                g = 120 + stripe * 30;
+                b = 100 + noise * 10;
+            } else if (type === 'molten') {
+                r = 200 + noise * 55;
+                g = 50 + noise * 100;
+                b = 0;
+            } else if (type === 'habitable') {
+                const land = Math.random() > 0.6;
+                if (land) { r = 50 + noise * 50; g = 100 + noise * 50; b = 20; }
+                else { r = 20; g = 50; b = 150 + noise * 50; }
+            } else {
+                r = g = b = 100 + noise * 50;
+            }
+
+            imgData.data[i] = r;
+            imgData.data[i+1] = g;
+            imgData.data[i+2] = b;
+            imgData.data[i+3] = 255;
+        }
+        ctx.putImageData(imgData, 0, 0);
+        
+        // Add clouds for habitable
+        if (type === 'habitable') {
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            for(let j=0; j<20; j++) {
+                ctx.beginPath();
+                ctx.arc(Math.random()*size, Math.random()*size, Math.random()*20, 0, Math.PI*2);
+                ctx.fill();
+            }
+        }
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        return tex;
+    }
 
     const starVertexShader = `
         attribute float size;
@@ -231,9 +268,11 @@
 
         clock = new THREE.Clock();
         raycaster = new THREE.Raycaster();
-        mouse = new THREE.Vector2();
         
         scene.add(new THREE.AmbientLight(0x666666));
+        const sunLight = new THREE.PointLight(0xffffff, 1, 0);
+        scene.add(sunLight);
+
         scene.add(galaxyPointClouds);
         scene.add(localStarSystems);
 
@@ -254,39 +293,47 @@
             filaments.push({ 
                 name: filamentNames[f], 
                 position: mid, 
-                element: createLabel(filamentNames[f], 'label-filament'),
-                lengthMpc: 30 + Math.random() * 70 
+                element: createLabel(filamentNames[f], 'label-filament')
             });
 
             for (let i = 0; i < 35; i++) {
                 const t = i / 35;
                 const pos = curve.getPoint(t);
+                if (Math.random() > 0.75) createMinorFilament(pos);
                 pos.add(new THREE.Vector3((Math.random()-0.5)*GALAXY_RADIUS*25, (Math.random()-0.5)*GALAXY_RADIUS*25, (Math.random()-0.5)*GALAXY_RADIUS*25));
-                createGalaxyAt(pos, false);
+                createGalaxyAt(pos);
             }
         }
     }
 
-    function createGalaxyAt(pos, isRogue) {
+    function createMinorFilament(startPos) {
+        const direction = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize();
+        const endPos = startPos.clone().add(direction.multiplyScalar(GALAXY_RADIUS * 80));
+        const curve = new THREE.CatmullRomCurve3([startPos, startPos.clone().lerp(endPos, 0.5).add(new THREE.Vector3(Math.random()*10000, 0, 0)), endPos]);
+        
+        filaments.push({ name: "Minor Filament", position: curve.getPoint(0.5), element: createLabel("Minor Filament", "label-minor") });
+        for (let i = 0; i < 10; i++) {
+            const pos = curve.getPoint(Math.random());
+            pos.add(new THREE.Vector3((Math.random()-0.5)*GALAXY_RADIUS*15, (Math.random()-0.5)*GALAXY_RADIUS*15, (Math.random()-0.5)*GALAXY_RADIUS*15));
+            createGalaxyAt(pos);
+        }
+    }
+
+    function createGalaxyAt(pos) {
         const colorTheme = GALAXY_COLORS[Math.floor(Math.random() * GALAXY_COLORS.length)];
         const typeRand = Math.random();
-        let type = 'spiral';
-        if (typeRand < 0.3) type = 'spiral';
-        else if (typeRand < 0.5) type = 'elliptical';
-        else if (typeRand < 0.8) type = 'dwarf';
-        else type = 'irregular';
-
+        let type = typeRand < 0.3 ? 'spiral' : (typeRand < 0.6 ? 'elliptical' : 'dwarf');
         let galName = `${colorTheme.name} ${type.charAt(0).toUpperCase() + type.slice(1)} ${Math.floor(Math.random()*9000 + 1000)}`;
 
         const galaxyData = {
-            position: pos,
+            position: pos.clone(),
             type: type,
-            id: `gal_${Math.random()}`,
             name: galName,
             colorTheme: colorTheme,
-            mpcSize: 0.015 + Math.random() * 0.05,
             labelElement: createLabel(galName, 'label-galaxy'),
-            stars: []
+            stars: [],
+            blackHoleRealized: false,
+            blackHoleGroup: null
         };
         
         generateGalaxyStars(galaxyData);
@@ -303,11 +350,6 @@
         const sizes = [];
         const color = new THREE.Color();
 
-        // --- NEW: Calculate Cosmic Distance for Redshift ---
-        // We use distance from "Absolute Center" (0,0,0) to determine redshift factor
-        const galaxyDistFromCenter = data.position.length();
-        const redshiftRatio = Math.min(1.0, galaxyDistFromCenter / UNIVERSE_RADIUS);
-
         for (let i = 0; i < starCount; i++) {
             let x, y, z;
             if (data.type === 'spiral') {
@@ -322,38 +364,43 @@
             }
             
             const starPos = new THREE.Vector3(x + data.position.x, y + data.position.y, z + data.position.z);
-            
-            // --- NEW: Apply Redshift and Dimming ---
             const hVar = data.colorTheme.h + (Math.random() - 0.5) * 0.05;
             color.setHSL(hVar, data.colorTheme.s, 0.5 + Math.random() * 0.3); 
             
-            // Redshift logic: Pull color toward red (0.0 HSL) and reduce brightness
-            const redshiftStrength = redshiftRatio * 1.5; 
-            const dimming = 1.0 - (redshiftRatio * 0.7);
-
-            // Shift Hue toward red and lower Luminance for distance
-            let currentHSL = { h: 0, s: 0, l: 0 };
-            color.getHSL(currentHSL);
-            color.setHSL(
-                THREE.MathUtils.lerp(currentHSL.h, 0.0, redshiftStrength), 
-                currentHSL.s, 
-                currentHSL.l * dimming
-            );
-            
             const spectralIndex = Math.floor(Math.pow(Math.random(), 0.7) * SPECTRAL_COLORS.length); 
             let spectralInfo = SPECTRAL_COLORS[spectralIndex];
+
+            // Generate Planet Data for this star
+            const planets = [];
+            const numPlanets = Math.floor(Math.random() * 6) + 1;
+            for(let p=0; p<numPlanets; p++) {
+                const pTypeRand = Math.random();
+                let pType = 'rocky';
+                if (pTypeRand < 0.05) pType = 'habitable';
+                else if (pTypeRand < 0.3) pType = 'jovian';
+                else if (pTypeRand < 0.5) pType = 'molten';
+
+                planets.push({
+                    type: pType,
+                    distance: (p + 1) * STAR_SIZE * 30 + Math.random() * 20,
+                    angle: Math.random() * Math.PI * 2,
+                    speed: 0.1 / (p + 1),
+                    size: pType === 'jovian' ? 2.5 : (pType === 'molten' ? 0.6 : 1.0),
+                    mass: pType === 'jovian' ? "1.8e27 kg" : (pType === 'molten' ? "3.2e23 kg" : "5.9e24 kg"),
+                    moons: pType === 'habitable' ? (1 + Math.floor(Math.random()*3)) : 0
+                });
+            }
 
             data.stars.push({
                 position: starPos,
                 galacticColor: color.clone(),
                 spectralColor: new THREE.Color(spectralInfo.color),
                 spectralName: spectralInfo.name,
-                spectralTemp: spectralInfo.temp,
                 sizeMult: spectralInfo.sizeMult,
                 name: `${GREEK_CHARS[Math.floor(Math.random()*GREEK_CHARS.length)]} ${CONSTELLATIONS[Math.floor(Math.random()*CONSTELLATIONS.length)]}`,
+                planets: planets,
                 isRealized: false,
-                systemGroup: null,
-                planetCount: Math.random() > 0.6 ? Math.floor(Math.random() * 8 + 1) : 0
+                systemGroup: null
             });
 
             positions.push(starPos.x, starPos.y, starPos.z);
@@ -365,11 +412,8 @@
         geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
         geo.setAttribute('customColor', new THREE.Float32BufferAttribute(colors, 3));
         geo.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
-        
         const mat = new THREE.ShaderMaterial({ vertexShader: starVertexShader, fragmentShader: starFragmentShader, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
-        const points = new THREE.Points(geo, mat);
-        galaxyPointClouds.add(points);
-        data.pointCloud = points;
+        galaxyPointClouds.add(new THREE.Points(geo, mat));
     }
 
     function createLabel(text, className) {
@@ -386,25 +430,31 @@
         const frustum = new THREE.Frustum();
         const matrix = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
         frustum.setFromProjectionMatrix(matrix);
-        const inIsolation = !!isolatedStar;
 
         filaments.forEach(f => {
-            const visible = !inIsolation && camPos.distanceTo(f.position) > GALAXY_RADIUS * 20 && frustum.containsPoint(f.position);
+            const visible = camPos.distanceTo(f.position) > GALAXY_RADIUS * 10 && camPos.distanceTo(f.position) < GALAXY_RADIUS * 200 && frustum.containsPoint(f.position);
             updateLabelElement(f.element, f.position, visible);
         });
 
         galaxies.forEach(g => {
             const dist = camPos.distanceTo(g.position);
-            const visible = !inIsolation && dist < GALAXY_RADIUS * 15 && dist > GALAXY_RADIUS * 0.5 && frustum.containsPoint(g.position);
+            const visible = dist < GALAXY_RADIUS * 15 && dist > GALAXY_RADIUS * 0.5 && frustum.containsPoint(g.position);
             updateLabelElement(g.labelElement, g.position, visible);
         });
 
         localStarSystems.children.forEach(sys => {
-            const worldPos = sys.position;
-            const dist = camPos.distanceTo(worldPos);
-            const starVisible = frustum.containsPoint(worldPos) && 
-                               ((isolatedStar === sys && !isolatedPlanet) || (!inIsolation && dist < STAR_SIZE * 500));
-            if (sys.userData.label) updateLabelElement(sys.userData.label, worldPos, starVisible);
+            const dist = camPos.distanceTo(sys.position);
+            if (sys.userData.label) updateLabelElement(sys.userData.label, sys.position, dist < STAR_SIZE * 1000 && frustum.containsPoint(sys.position));
+            
+            // Planet labels
+            if (sys.userData.planetGroups) {
+                sys.userData.planetGroups.forEach(pg => {
+                    const worldPos = new THREE.Vector3();
+                    pg.getWorldPosition(worldPos);
+                    const pDist = camPos.distanceTo(worldPos);
+                    updateLabelElement(pg.userData.label, worldPos, pDist < STAR_SIZE * 50 && frustum.containsPoint(worldPos));
+                });
+            }
         });
     }
 
@@ -412,41 +462,74 @@
         if (!el) return;
         if (!visible) { el.style.opacity = '0'; return; }
         const screenPos = worldPos.clone().project(camera);
-        const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
-        const y = (screenPos.y * -0.5 + 0.5) * window.innerHeight;
-        el.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+        el.style.transform = `translate(-50%, -50%) translate(${(screenPos.x * 0.5 + 0.5) * window.innerWidth}px, ${(screenPos.y * -0.5 + 0.5) * window.innerHeight}px)`;
         el.style.opacity = '1';
     }
 
     function updateSectorRealization() {
-        if (isolatedStar) return;
         const camPos = camera.position;
-        let activeCount = localStarSystems.children.length;
-        if (activeCount > MAX_3D_STARS) currentRealizationDist *= 0.95;
-        else if (currentRealizationDist < GALAXY_RADIUS * 0.05) currentRealizationDist *= 1.02;
-        currentRealizationDist = Math.max(STAR_SIZE * 5, Math.min(GALAXY_RADIUS * 0.05, currentRealizationDist));
-        
         galaxies.forEach(gal => {
-            if (camPos.distanceTo(gal.position) > GALAXY_RADIUS * 2.5) return; 
+            const distToGal = camPos.distanceTo(gal.position);
+            if (distToGal < GALAXY_RADIUS * 0.8 && !gal.blackHoleRealized) realizeBlackHole(gal);
+            else if (distToGal > GALAXY_RADIUS * 1.0 && gal.blackHoleRealized) unrealizeBlackHole(gal);
+
+            if (distToGal > GALAXY_RADIUS * 2.5) return;
             gal.stars.forEach(star => {
                 const dist = camPos.distanceTo(star.position);
-                if (dist < currentRealizationDist && !star.isRealized) {
-                    if (localStarSystems.children.length < MAX_3D_STARS + 5) realizeStar(star);
-                } else if (dist > currentRealizationDist * 1.5 && star.isRealized) unrealizeStar(star);
+                if (dist < currentRealizationDist && !star.isRealized) realizeStar(star);
+                else if (dist > currentRealizationDist * 1.5 && star.isRealized) unrealizeStar(star);
             });
         });
-        document.getElementById('meter-fill').style.width = `${Math.min(100, (activeCount / MAX_3D_STARS) * 100)}%`;
+        document.getElementById('meter-fill').style.width = `${Math.min(100, (localStarSystems.children.length / MAX_3D_STARS) * 100)}%`;
     }
 
     function realizeStar(star) {
         const group = new THREE.Group();
         group.position.copy(star.position);
         group.userData.starData = star;
+        group.userData.planetGroups = [];
+
+        // Sun
         const sun = new THREE.Mesh(new THREE.SphereGeometry(STAR_SIZE * star.sizeMult, 32, 32), new THREE.MeshBasicMaterial({ color: star.spectralColor }));
         group.add(sun);
         const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createGlowTexture(star.spectralColor), transparent: true, blending: THREE.AdditiveBlending }));
-        sprite.scale.set(STAR_SIZE * star.sizeMult * 10, STAR_SIZE * star.sizeMult * 10, 1);
+        sprite.scale.set(STAR_SIZE * star.sizeMult * 8, STAR_SIZE * star.sizeMult * 8, 1);
         group.add(sprite);
+
+        // Planets
+        star.planets.forEach((p, idx) => {
+            const pGroup = new THREE.Group();
+            const pMesh = new THREE.Mesh(
+                new THREE.SphereGeometry(PLANET_BASE_SIZE * p.size, 32, 32),
+                new THREE.MeshStandardMaterial({ map: createProceduralTexture(p.type), roughness: 0.8 })
+            );
+            pMesh.position.set(p.distance, 0, 0);
+            pGroup.add(pMesh);
+
+            // Special Atmosphere for Habitable
+            if (p.type === 'habitable') {
+                const atm = new THREE.Mesh(
+                    new THREE.SphereGeometry(PLANET_BASE_SIZE * p.size * 1.05, 32, 32),
+                    new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.2 })
+                );
+                atm.position.set(p.distance, 0, 0);
+                pGroup.add(atm);
+                
+                // Add Moons
+                for(let m=0; m<p.moons; m++) {
+                    const moon = new THREE.Mesh(new THREE.SphereGeometry(PLANET_BASE_SIZE * 0.2, 16, 16), new THREE.MeshStandardMaterial({ color: 0x888888 }));
+                    moon.position.set(p.distance + PLANET_BASE_SIZE * 2 + m * 0.5, 0.2, 0);
+                    pGroup.add(moon);
+                }
+            }
+
+            pGroup.rotation.y = p.angle;
+            pGroup.userData.pData = p;
+            pGroup.userData.label = createLabel(p.type.toUpperCase(), 'label-planet');
+            group.add(pGroup);
+            group.userData.planetGroups.push(pGroup);
+        });
+
         group.userData.label = createLabel(star.name, 'label-star');
         localStarSystems.add(group);
         star.isRealized = true;
@@ -454,67 +537,85 @@
     }
 
     function unrealizeStar(star) {
-        if (star.systemGroup && star.systemGroup.userData.label) star.systemGroup.userData.label.remove();
-        localStarSystems.remove(star.systemGroup);
+        if (star.systemGroup) {
+            star.systemGroup.userData.label.remove();
+            star.systemGroup.userData.planetGroups.forEach(pg => pg.userData.label.remove());
+            localStarSystems.remove(star.systemGroup);
+        }
         star.isRealized = false;
         star.systemGroup = null;
     }
 
+    function realizeBlackHole(gal) {
+        const g = new THREE.Group(); g.position.copy(gal.position);
+        const eh = new THREE.Mesh(new THREE.SphereGeometry(BH_SIZE, 32, 32), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+        g.add(eh);
+        const disk = new THREE.Mesh(new THREE.TorusGeometry(BH_SIZE * 3, BH_SIZE * 0.5, 2, 64), new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.7 }));
+        disk.rotation.x = Math.PI/2.1; g.add(disk);
+        g.userData.isBH = true; g.userData.label = createLabel("Singularity", "label-void");
+        localStarSystems.add(g);
+        gal.blackHoleGroup = g; gal.blackHoleRealized = true;
+    }
+
+    function unrealizeBlackHole(gal) {
+        if (gal.blackHoleGroup) { gal.blackHoleGroup.userData.label.remove(); localStarSystems.remove(gal.blackHoleGroup); }
+        gal.blackHoleGroup = null; gal.blackHoleRealized = false;
+    }
+
     function createGlowTexture(color) {
-        const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64;
-        const ctx = canvas.getContext('2d');
-        const grad = ctx.createRadialGradient(32,32,0, 32,32,32);
-        grad.addColorStop(0, `rgba(${color.r*255}, ${color.g*255}, ${color.b*255}, 1)`);
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = grad; ctx.fillRect(0,0,64,64);
-        return new THREE.CanvasTexture(canvas);
+        const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+        const ctx = c.getContext('2d');
+        const g = ctx.createRadialGradient(32,32,0, 32,32,32);
+        g.addColorStop(0, `rgb(${color.r*255},${color.g*255},${color.b*255})`);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.fillRect(0,0,64,64);
+        return new THREE.CanvasTexture(c);
     }
 
     function updateCelestialInfo() {
         raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
         const infoUI = document.getElementById('celestia-info');
-        const camPos = camera.position;
-        const localIntersects = raycaster.intersectObjects(localStarSystems.children, true);
+        const intersects = raycaster.intersectObjects(localStarSystems.children, true);
         
-        if (localIntersects.length > 0) {
-            let starGrp = localIntersects[0].object;
-            while (starGrp.parent && starGrp.parent !== localStarSystems) starGrp = starGrp.parent;
-            if (starGrp.userData.starData) {
-                const s = starGrp.userData.starData;
-                infoUI.style.opacity = '1';
+        if (intersects.length > 0) {
+            let hit = intersects[0].object;
+            while(hit.parent && hit.parent !== localStarSystems && !hit.userData.pData) hit = hit.parent;
+            infoUI.style.opacity = '1';
+            
+            if (hit.userData.pData) {
+                const p = hit.userData.pData;
+                document.getElementById('info-name').innerText = p.type.charAt(0).toUpperCase() + p.type.slice(1);
+                document.getElementById('info-type').innerText = `Planetary Body (${p.type})`;
+                document.getElementById('info-extra').innerText = `Mass: ${p.mass} | Moons: ${p.moons}`;
+            } else if (hit.userData.starData) {
+                const s = hit.userData.starData;
                 document.getElementById('info-name').innerText = s.name;
-                document.getElementById('info-dist').innerText = `${(camPos.distanceTo(starGrp.position)/1000).toFixed(2)} Parsecs`;
                 document.getElementById('info-type').innerText = s.spectralName;
-                document.getElementById('info-sector').innerText = s.name.split(' ').slice(1).join(' ');
-                document.getElementById('info-extra').innerText = `Redshift Z: ${(starGrp.position.length()/UNIVERSE_RADIUS).toFixed(4)}`;
-                return;
+                document.getElementById('info-extra').innerText = `${s.planets.length} Satellites Detected`;
             }
-        }
-        infoUI.style.opacity = '0';
+        } else { infoUI.style.opacity = '0'; }
     }
 
     function setupEvents() {
         window.addEventListener('mousemove', (e) => {
             if (document.pointerLockElement === document.body) {
                 rotation.y -= e.movementX * 0.0012; rotation.x -= e.movementY * 0.0012;
-                rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, rotation.x));
+                rotation.x = Math.max(-Math.PI/2, Math.PI/2, rotation.x);
             }
         });
         window.addEventListener('keydown', (e) => {
-            const key = e.key.toLowerCase(); if(key === 'e') throttleCap = Math.min(1.0, throttleCap + 0.05);
-            if(key === 'q') throttleCap = Math.max(0.001, throttleCap - 0.05);
+            if(e.key.toLowerCase() === 'e') throttleCap = Math.min(1.0, throttleCap + 0.05);
+            if(e.key.toLowerCase() === 'q') throttleCap = Math.max(0.01, throttleCap - 0.05);
             if(e.shiftKey) isWarping = true;
         });
-        window.addEventListener('keyup', (e) => { if(e.key === 'Shift') isWarping = false; });
-        renderer.domElement.addEventListener('mousedown', () => { document.body.requestPointerLock(); });
+        window.addEventListener('keyup', (e) => { if(!e.shiftKey) isWarping = false; });
+        renderer.domElement.addEventListener('mousedown', () => document.body.requestPointerLock());
         window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
     }
 
     function animate() {
         requestAnimationFrame(animate);
-        const delta = Math.min(clock.getDelta(), 0.1);
-        let targetInput = (window.keys && window.keys['w']) ? 1 : 0; // Simple check
-        // Basic keyboard state
+        const delta = clock.getDelta();
         if(!window.keys) window.keys = {};
         window.onkeydown = (e) => window.keys[e.key.toLowerCase()] = true;
         window.onkeyup = (e) => window.keys[e.key.toLowerCase()] = false;
@@ -522,14 +623,21 @@
         let input = window.keys['w'] ? 1 : (window.keys['s'] ? -1 : 0);
         currentVelocity += (input * throttleCap - currentVelocity) * 0.05;
         
-        let basePower = 2000000; if (isWarping) basePower *= 1500; 
+        let power = isWarping ? 3000000000 : 2000000;
         camera.quaternion.setFromEuler(rotation);
-        const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-        camera.position.addScaledVector(dir, currentVelocity * basePower * delta);
+        camera.position.addScaledVector(new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion), currentVelocity * power * delta);
         
+        // Orbit Planets
+        localStarSystems.children.forEach(sys => {
+            if (sys.userData.planetGroups) {
+                sys.userData.planetGroups.forEach(pg => {
+                    pg.rotation.y += pg.userData.pData.speed * delta * 5;
+                });
+            }
+        });
+
         document.getElementById('speed-val').innerText = `${Math.round(throttleCap * 100)}%`;
         document.getElementById('warp-indicator').style.visibility = isWarping ? 'visible' : 'hidden';
-
         updateSectorRealization();
         updateLabels();
         updateCelestialInfo();
